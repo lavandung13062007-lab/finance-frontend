@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  <any[]>const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("chi_tieu");
@@ -10,28 +10,24 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Biến mới để hứng lỗi và hiển thị ra màn hình
   const [errorMessage, setErrorMessage] = useState("");
 
   const BACKEND_URL = "https://finance-backend-1-he8m.onrender.com";
 
-  // Hàm tải dữ liệu được bọc "Áo giáp" an toàn
   const fetchTransactions = () => {
     fetch(`${BACKEND_URL}/api/transactions`)
       .then((res) => res.json())
       .then((data) => {
-        // KIỂM TRA BẢO MẬT: Nếu data thực sự là một Danh sách (Array) thì mới xử lý
         if (Array.isArray(data)) {
           setTransactions(data);
-          setErrorMessage(""); // Xóa lỗi (nếu có)
+          setErrorMessage(""); 
         } else {
-          // Nếu data không phải danh sách (nghĩa là Backend trả về cục lỗi)
-          setTransactions([]); // Đặt về rỗng để App không bị sập
-          setErrorMessage(JSON.stringify(data)); // In cái lỗi đó ra màn hình để biết đường sửa
+          setTransactions([]); 
+          setErrorMessage(JSON.stringify(data)); 
         }
       })
       .catch((err) => {
-        setErrorMessage("Không thể kết nối đến Máy chủ Render. Vui lòng kiểm tra lại Render.");
+        setErrorMessage("Không thể kết nối đến Máy chủ. Đang chờ Máy chủ khởi động, vui lòng thử lại sau 1 phút.");
       });
   };
 
@@ -39,7 +35,6 @@ export default function Home() {
     fetchTransactions();
   }, []);
 
-  // Hàm tính tổng cũng được bọc an toàn
   const calculateTotal = () => {
     if (!Array.isArray(transactions)) return 0;
     let total = 0;
@@ -84,12 +79,11 @@ export default function Home() {
     <main className="p-4 max-w-md mx-auto bg-gray-50 min-h-screen font-sans relative">
       <h1 className="text-2xl font-bold text-center mb-6 text-blue-700">Tài Chính Của Dũng</h1>
       
-      {/* NẾU CÓ LỖI, NÓ SẼ HIỆN CÁI BẢNG MÀU ĐỎ NÀY LÊN */}
       {errorMessage && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm overflow-auto text-xs">
           <p className="font-bold mb-1">Máy chủ báo lỗi:</p>
           <p>{errorMessage}</p>
-          <p className="mt-2 text-gray-600 font-semibold">Gợi ý: Khả năng cao bạn chưa tạo bảng 'transactions' trên Supabase.</p>
+          <p className="mt-2 text-gray-600 font-semibold">Gợi ý: Nếu bạn vừa mới tạo Supabase, hãy kiểm tra lại cài đặt.</p>
         </div>
       )}
 
