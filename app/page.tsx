@@ -89,7 +89,7 @@ export default function Home() {
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm overflow-auto text-xs">
           <p className="font-bold mb-1">Máy chủ báo lỗi:</p>
           <p>{errorMessage}</p>
-          <p className="mt-2 text-gray-600 font-semibold">-> Gợi ý: Khả năng cao bạn chưa tạo bảng 'transactions' trên Supabase.</p>
+          <p className="mt-2 text-gray-600 font-semibold">Gợi ý: Khả năng cao bạn chưa tạo bảng 'transactions' trên Supabase.</p>
         </div>
       )}
 
