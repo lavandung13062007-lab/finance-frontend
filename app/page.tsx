@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("chi_tieu");
