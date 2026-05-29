@@ -3,64 +3,96 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [transactions, setTransactions] = useState([]);
-  const [showForm, setShowForm] = useState(false); // Điều khiển việc ẩn/hiện bảng nhập
+  const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("chi_tieu");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Biến mới để hứng lỗi và hiển thị ra màn hình
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Link Backend của bạn
   const BACKEND_URL = "https://finance-backend-1-he8m.onrender.com";
 
-  // Hàm tải dữ liệu
+  // Hàm tải dữ liệu được bọc "Áo giáp" an toàn
   const fetchTransactions = () => {
     fetch(`${BACKEND_URL}/api/transactions`)
       .then((res) => res.json())
-      .then((data) => setTransactions(data))
-      .catch((err) => console.log("Lỗi kết nối", err));
+      .then((data) => {
+        // KIỂM TRA BẢO MẬT: Nếu data thực sự là một Danh sách (Array) thì mới xử lý
+        if (Array.isArray(data)) {
+          setTransactions(data);
+          setErrorMessage(""); // Xóa lỗi (nếu có)
+        } else {
+          // Nếu data không phải danh sách (nghĩa là Backend trả về cục lỗi)
+          setTransactions([]); // Đặt về rỗng để App không bị sập
+          setErrorMessage(JSON.stringify(data)); // In cái lỗi đó ra màn hình để biết đường sửa
+        }
+      })
+      .catch((err) => {
+        setErrorMessage("Không thể kết nối đến Máy chủ Render. Vui lòng kiểm tra lại Render.");
+      });
   };
 
   useEffect(() => {
     fetchTransactions();
   }, []);
 
-  // Hàm tính tổng số dư
+  // Hàm tính tổng cũng được bọc an toàn
   const calculateTotal = () => {
+    if (!Array.isArray(transactions)) return 0;
     let total = 0;
     transactions.forEach((t: any) => {
-      if (t.type === "thu_nhap") total += parseFloat(t.amount);
-      else total -= parseFloat(t.amount);
+      const val = parseFloat(t.amount) || 0;
+      if (t.type === "thu_nhap") total += val;
+      else total -= val;
     });
     return total;
   };
 
-  // Hàm gửi dữ liệu lên máy chủ khi ấn nút Lưu
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
     const newTransaction = { amount, type, category, description };
 
-    await fetch(`${BACKEND_URL}/api/transactions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTransaction),
-    });
-
-    // Reset form và tải lại dữ liệu mới
-    setAmount("");
-    setCategory("");
-    setDescription("");
-    setShowForm(false);
-    setIsLoading(false);
-    fetchTransactions(); // Gọi lại hàm lấy dữ liệu để danh sách tự cập nhật
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTransaction),
+      });
+      const data = await res.json();
+      
+      if (data.error) {
+        alert("Lỗi khi lưu: " + data.error);
+      } else {
+        setAmount("");
+        setCategory("");
+        setDescription("");
+        setShowForm(false);
+        fetchTransactions(); 
+      }
+    } catch (error) {
+      alert("Đã xảy ra sự cố khi gửi dữ liệu!");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <main className="p-4 max-w-md mx-auto bg-gray-50 min-h-screen font-sans relative">
       <h1 className="text-2xl font-bold text-center mb-6 text-blue-700">Tài Chính Của Dũng</h1>
       
-      {/* Khối hiển thị Tổng tiền tự động tính toán */}
+      {/* NẾU CÓ LỖI, NÓ SẼ HIỆN CÁI BẢNG MÀU ĐỎ NÀY LÊN */}
+      {errorMessage && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm overflow-auto text-xs">
+          <p className="font-bold mb-1">Máy chủ báo lỗi:</p>
+          <p>{errorMessage}</p>
+          <p className="mt-2 text-gray-600 font-semibold">-> Gợi ý: Khả năng cao bạn chưa tạo bảng 'transactions' trên Supabase.</p>
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-2xl shadow-lg mb-6">
         <p className="text-sm opacity-90 mb-1">Tổng số dư thực tế</p>
         <h2 className="text-4xl font-extrabold">{calculateTotal().toLocaleString("vi-VN")} đ</h2>
@@ -68,7 +100,6 @@ export default function Home() {
 
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-gray-800">Lịch sử giao dịch</h3>
-        {/* Nút bấm để hiện Form */}
         <button 
           onClick={() => setShowForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform"
@@ -77,11 +108,10 @@ export default function Home() {
         </button>
       </div>
       
-      {/* Danh sách các khoản Thu/Chi */}
       <div className="space-y-3 pb-24">
-        {transactions.length === 0 ? (
+        {(!Array.isArray(transactions) || transactions.length === 0) ? (
           <div className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-100">
-            <p className="text-gray-400 italic">Chưa có giao dịch nào. Bấm Thêm mới để bắt đầu!</p>
+            <p className="text-gray-400 italic">Chưa có giao dịch nào hoặc dữ liệu trống.</p>
           </div>
         ) : (
           transactions.map((t: any) => (
@@ -103,38 +133,27 @@ export default function Home() {
         )}
       </div>
 
-      {/* --- CỬA SỔ NỔI ĐỂ NHẬP DỮ LIỆU --- */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-xl font-bold mb-4">Thêm giao dịch mới</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* Chọn Thu hay Chi */}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setType("chi_tieu")} className={`flex-1 py-2 rounded-lg font-bold ${type === "chi_tieu" ? "bg-red-500 text-white" : "bg-gray-100 text-gray-500"}`}>Chi tiền</button>
                 <button type="button" onClick={() => setType("thu_nhap")} className={`flex-1 py-2 rounded-lg font-bold ${type === "thu_nhap" ? "bg-green-500 text-white" : "bg-gray-100 text-gray-500"}`}>Thu tiền</button>
               </div>
-
-              {/* Nhập số tiền */}
               <div>
                 <label className="text-xs font-bold text-gray-500">SỐ TIỀN (VNĐ)</label>
                 <input type="number" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full text-2xl font-bold border-b-2 border-gray-200 outline-none py-2 focus:border-blue-500" placeholder="0" />
               </div>
-
-              {/* Nhập danh mục */}
               <div>
-                <label className="text-xs font-bold text-gray-500">DANH MỤC (VD: Ăn uống, Đổ xăng...)</label>
+                <label className="text-xs font-bold text-gray-500">DANH MỤC</label>
                 <input type="text" required value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1 outline-none focus:border-blue-500" />
               </div>
-
-              {/* Nhập ghi chú */}
               <div>
-                <label className="text-xs font-bold text-gray-500">GHI CHÚ THÊM</label>
+                <label className="text-xs font-bold text-gray-500">GHI CHÚ</label>
                 <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1 outline-none focus:border-blue-500" />
               </div>
-
-              {/* Các nút bấm */}
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">Hủy</button>
                 <button type="submit" disabled={isLoading} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md">
